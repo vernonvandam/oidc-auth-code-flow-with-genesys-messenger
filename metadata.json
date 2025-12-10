@@ -1,0 +1,4 @@
+{
+  "name": "OIDC Auth Code Flow Debugger",
+  "description": "A developer tool to visualize and test the OIDC Authorization Code Flow with Azure AD B2C, including PKCE and Token Exchange."
+}
