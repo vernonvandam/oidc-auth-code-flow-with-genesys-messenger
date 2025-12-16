@@ -1,0 +1,128 @@
+Index: App.tsx
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/App.tsx b/App.tsx
+--- a/App.tsx  (revision cd304b98f3c48b2c252eb512f0011ccdcdee241c)
++++ b/App.tsx  (date 1765862063226)
+@@ -104,6 +104,7 @@
+   );
+
+   const [messengerStatus, setMessengerStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
++  const [hasRegisteredAuthProvider, setHasRegisteredAuthProvider] = useState(false);
+
+   // Persistence Effects
+   useEffect(() => {
+@@ -301,6 +302,7 @@
+             ys.onload = () => {
+                 console.log("[Genesys Debug] Script Loaded");
+                 setMessengerStatus('ready');
++                registerGenesysAuthProvider();
+             };
+             ys.onerror = () => {
+                 setMessengerStatus('error');
+@@ -309,27 +311,45 @@
+             document.head.appendChild(ys);
+         })(window, 'Genesys', `https://apps.${regionDomain}/genesys-bootstrap/genesys.min.js`, genesysConfigObj);
+
+-        // Register AuthProvider immediately. 
+-        registerGenesysAuthProvider();
+-
+     } else {
+         // Already loaded
+         console.log("[Genesys Debug] Script already exists in DOM");
+         setMessengerStatus('ready');
+-        registerGenesysAuthProvider();
++        // Register AuthProvider after Messenger is ready
++        (window as any).Genesys("subscribe", "Messenger.ready", () => {
++            if (!hasRegisteredAuthProvider) {
++                console.log("[Genesys Debug] Messenger ready, registering AuthProvider");
++                registerGenesysAuthProvider();
++            }
++        });
+     }
+   };
+
+   const registerGenesysAuthProvider = () => {
++    if (hasRegisteredAuthProvider) {
++      console.log("[Genesys Debug] AuthProvider already registered, skipping");
++      return;
++    }
+     if (!(window as any).Genesys) return;
+
+-    (window as any).Genesys("register", "AuthProvider", (AuthProvider: any) => {
++    setHasRegisteredAuthProvider(true);
++
++    (window as any).Genesys("registerPlugin", "AuthProvider", (AuthProvider: any) => {
+         console.log("[Genesys Debug] AuthProvider registering...");
+-        
++
+         AuthProvider.registerCommand("getAuthCode", (e: any) => {
+-            console.log("[Genesys Debug] getAuthCode called by Messenger");
++            console.log("[Genesys Debug] getAuthCode called by Messenger", e.data);
++            const { forceUpdate } = e.data || {};
++
++            if (forceUpdate) {
++                console.log("[Genesys Debug] Force update requested, triggering login");
++                handleLogin();
++                e.resolve();
++                return;
++            }
++
+             const verifier = sessionStorage.getItem(STORAGE_KEY_VERIFIER);
+-            
++
+             if (authCode && verifier) {
+                 console.log("[Genesys Debug] Providing auth code to Messenger");
+                 e.resolve({
+@@ -342,19 +362,33 @@
+                 e.reject("No auth code or verifier available. Please authorize first.");
+             }
+         });
+-        
++
+         AuthProvider.registerCommand("reAuthenticate", (e: any) => {
+              console.log("[Genesys Debug] reAuthenticate requested");
+-             if(window.confirm("Genesys Messenger session expired. Re-authenticate?")) {
+-                 handleReset();
+-             }
++             // Trigger re-authentication by starting the login flow again
++             handleLogin();
+              e.resolve();
+         });
+-        
+-        // Subscribe to authenticated event to know when it succeeded
+-        (window as any).Genesys("subscribe", "Auth.authenticated", () => {
+-             console.log("[Genesys Debug] User Authenticated Successfully!");
++
++        // Subscribe to Auth events
++        AuthProvider.subscribe('Auth.ready', () => {
++            console.log("[Genesys Debug] Auth.ready - Auth plugin is ready");
++        });
++
++        AuthProvider.subscribe('Auth.authenticated', () => {
++            console.log("[Genesys Debug] Auth.authenticated - User authenticated successfully");
+         });
++
++        AuthProvider.subscribe('Auth.error', (error: any) => {
++            console.log("[Genesys Debug] Auth.error", error?.data?.message || error);
++        });
++
++        AuthProvider.subscribe('Auth.authError', (error: any) => {
++            console.log("[Genesys Debug] Auth.authError", error);
++        });
++
++        // Tell Messenger that your plugin is ready (mandatory)
++        AuthProvider.ready();
+     });
+   };
+
+@@ -690,4 +724,4 @@
+   );
+};
+
+-export default App;
+\ No newline at end of file
++export default App;
+ 
