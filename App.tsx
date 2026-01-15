@@ -15,15 +15,13 @@ const STORAGE_KEY_TOKEN_RESPONSE = 'oidc_token_response';
 const DEFAULT_CONFIG: OidcConfig = {
   authority: '',
   clientId: '',
-  clientSecret: '',
   redirectUri: window.location.origin,
-  scope: 'openid profile offline_access',
-  useBasicAuth: false
+  scope: 'openid profile email offline_access'
 };
 
 const DEFAULT_GENESYS_CONFIG: GenesysConfig = {
   deploymentId: '',
-  region: 'mypurecloud.com'
+  region: 'mypurecloud.com.au'
 };
 
 declare global {
@@ -403,7 +401,7 @@ const App: React.FC = () => {
     }
   };
 
-  const isConfigComplete = Boolean(metadata && config.clientId && config.clientSecret);
+  const isConfigComplete = Boolean(metadata && config.clientId);
   const isGenesysReady = Boolean(genesysConfig.deploymentId && authCode);
 
   return (
@@ -420,26 +418,12 @@ const App: React.FC = () => {
             <h1 className="text-xl font-bold text-gray-900">OIDC Auth Code Flow Debugger</h1>
           </div>
           <div className="text-xs text-gray-500 font-mono">
-            v1.6.3
+            v1.7.1
           </div>
         </div>
       </header>
 
-      {/* Warning Banner */}
-      <div className="bg-yellow-50 border-b border-yellow-200 p-4">
-        <div className="max-w-5xl mx-auto flex items-start">
-          <svg className="w-5 h-5 text-yellow-600 mt-0.5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <div>
-            <h3 className="text-sm font-medium text-yellow-800">Security Warning: Client Secret in Frontend</h3>
-            <p className="mt-1 text-sm text-yellow-700">
-              This application includes a <strong>Client Secret</strong> in the client-side code (browser). 
-              This is <strong>NOT RECOMMENDED</strong> for production applications. 
-            </p>
-          </div>
-        </div>
-      </div>
+
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
@@ -490,15 +474,7 @@ const App: React.FC = () => {
                     className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 border p-2"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Client Secret</label>
-                  <input 
-                    type="password" 
-                    value={config.clientSecret}
-                    onChange={(e) => setConfig({...config, clientSecret: e.target.value})}
-                    className="w-full text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 border p-2 bg-yellow-50"
-                  />
-                </div>
+
                 <div>
                   <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Redirect URI</label>
                   <input 
@@ -576,9 +552,9 @@ const App: React.FC = () => {
                     className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white 
                       ${!isConfigComplete ? 'bg-gray-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
                   >
-                    {!metadata 
-                      ? 'Waiting for Discovery...' 
-                      : (!config.clientId || !config.clientSecret ? 'Enter Client Details' : 'Authorize User')
+                    {!metadata
+                      ? 'Waiting for Discovery...'
+                      : (!config.clientId ? 'Enter Client ID' : 'Authorize User')
                     }
                   </button>
                 ) : (
@@ -633,17 +609,24 @@ const App: React.FC = () => {
                     <p className="text-sm text-gray-500">Waiting for code exchange...</p>
                     ) : (
                     <div className="space-y-4">
-                        <div className="bg-indigo-50 rounded p-3 border border-indigo-200">
-                            <p className="text-xs font-bold text-indigo-800 uppercase mb-1">Access Token (Truncated)</p>
-                            <code className="text-xs break-all text-indigo-700 block mb-2">
-                            {tokenResponse.access_token.substring(0, 50)}...
-                            </code>
-                            <div className="flex gap-2">
-                            <span className="text-xs px-2 py-1 bg-indigo-100 text-indigo-800 rounded">
-                                Expires in: {tokenResponse.expires_in}s
-                            </span>
+                        {tokenResponse.access_token ? (
+                            <div className="bg-indigo-50 rounded p-3 border border-indigo-200">
+                                <p className="text-xs font-bold text-indigo-800 uppercase mb-1">Access Token (Truncated)</p>
+                                <code className="text-xs break-all text-indigo-700 block mb-2">
+                                {tokenResponse.access_token.substring(0, 50)}...
+                                </code>
+                                <div className="flex gap-2">
+                                <span className="text-xs px-2 py-1 bg-indigo-100 text-indigo-800 rounded">
+                                    Expires in: {tokenResponse.expires_in || 0}s
+                                </span>
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="bg-gray-50 rounded p-3 border border-gray-200">
+                                <p className="text-xs font-bold text-gray-800 uppercase mb-1">Access Token</p>
+                                <p className="text-xs text-gray-600">No access token returned by the identity provider.</p>
+                            </div>
+                        )}
                     </div>
                     )}
                 </div>

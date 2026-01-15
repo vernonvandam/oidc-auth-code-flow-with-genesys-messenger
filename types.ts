@@ -1,10 +1,8 @@
 export interface OidcConfig {
   authority: string;
   clientId: string;
-  clientSecret: string;
   redirectUri: string;
   scope: string;
-  useBasicAuth?: boolean;
 }
 
 export interface GenesysConfig {
@@ -21,12 +19,12 @@ export interface DiscoveryMetadata {
 }
 
 export interface TokenResponse {
-  access_token: string;
+  access_token?: string;
   id_token: string;
   refresh_token?: string;
-  expires_in: number;
-  token_type: string;
-  scope: string;
+  expires_in?: number;
+  token_type?: string;
+  scope?: string;
 }
 
 export interface AuthState {
